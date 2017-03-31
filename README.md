@@ -6,92 +6,113 @@ an open-source (MIT) neural machine translation system.
 
 <center style="padding: 40px"><img width="70%" src="http://opennmt.github.io/simple-attn.png" /></center>
 
-## Quickstart
+## My Summary:
 
-### 0) Download the data.
+### 1) Use Byte-Pair Encoding (BPE) to reduce vocabulary size
 
-```wget https://s3.amazonaws.com/pytorch/examples/opennmt/data/onmt-data.tar && tar -xf onmt-data.tar```
+I use `https://github.com/rsennrich/subword-nmt`.
 
-### 1) Preprocess the data.
+### 2) Use Bidirectional RNNs (`-brnn`)
 
-```python preprocess.py -train_src data/src-train.txt -train_tgt data/tgt-train.txt -valid_src data/src-val.txt -valid_tgt data/tgt-val.txt -save_data data/demo```
+### 3) Result: 
+       	       
+After training on 100k Chinese-English sentence pairs,
+I got a BLEU score of 29.0 on NIST 06 newswire (dev set),
+and a BLEU score of 25.2 on NIST 08 newswire (test set).
 
-### 2) Train the model.
+## Steps:
 
-```python train.py -data data/demo-train.pt -save_model demo_model -gpus 0```
+### 0) Data: Chinese-English.
 
-### 3) Translate sentences.
+#### Training set: I use a small training set of 100,000 Chinese-English sentence pairs.
 
-```python translate.py -gpu 0 -model demo_model_e13_*.pt -src data/src-test.txt -tgt data/tgt-test.txt -replace_unk -verbose -output demo_pred.txt```
+| Language | Sentences | Vocabulary | Tokens |
+|--------:|--------:|----------:| ------:|
+| Chinese  | 100,000   | 49,424     | 2,743,464 |
+| English  | 100,000   | 43,588     | 3,487,249 |
 
-### 4) Evaluate.
+#### Development (held-out) set: NIST 06 newswire (616 sentences), 4 references.
 
-```bash
-wget https://raw.githubusercontent.com/moses-smt/mosesdecoder/master/scripts/generic/multi-bleu.perl
-perl multi-bleu.perl data/tgt-test.txt < demo_pred.txt
+#### Test set: NIST 08 newswire (691 sentences), 4 references.
+
+### 1) Byte-Pair Encoding preparation.
+
+Learn BPE:
+
+```
+cat data/train100k.zh | ./subword-nmt/learn_bpe.py > data-bpe/bpe.zh 
+cat data/train100k.en | ./subword-nmt/learn_bpe.py > data-bpe/bpe.en
 ```
 
-## WMT'16 Multimodal Translation: Multi30k (de-en)
+Apply BPE to training data:
 
-Data might not come as clean as the demo data. Here is a second example that uses the Moses tokenizer (http://www.statmt.org/moses/) to prepare the Multi30k data from the WMT'16 Multimodal Translation task (http://www.statmt.org/wmt16/multimodal-task.html).
+```
+cat data/train100k.zh | ./subword-nmt/apply_bpe.py -c data-bpe/bpe.zh > data-bpe/train100k.zh.bpe 
 
-### 0) Download the data.
-
-```bash
-mkdir -p data/multi30k
-wget http://www.quest.dcs.shef.ac.uk/wmt16_files_mmt/training.tar.gz &&  tar -xf training.tar.gz -C data/multi30k && rm training.tar.gz
-wget http://www.quest.dcs.shef.ac.uk/wmt16_files_mmt/validation.tar.gz && tar -xf validation.tar.gz -C data/multi30k && rm validation.tar.gz
-wget https://staff.fnwi.uva.nl/d.elliott/wmt16/mmt16_task1_test.tgz && tar -xf mmt16_task1_test.tgz -C data/multi30k && rm mmt16_task1_test.tgz
+cat data/train100k.en | ./subword-nmt/apply_bpe.py -c data-bpe/bpe.en > data-bpe/train100k.en.bpe 
 ```
 
-### 1) Preprocess the data.
+Apply BPE to dev set:
 
-```bash
-wget https://raw.githubusercontent.com/moses-smt/mosesdecoder/master/scripts/tokenizer/tokenizer.perl
-wget https://github.com/moses-smt/mosesdecoder/blob/master/scripts/share/nonbreaking_prefixes/nonbreaking_prefix.de
-wget https://github.com/moses-smt/mosesdecoder/blob/master/scripts/share/nonbreaking_prefixes/nonbreaking_prefix.en
-sed -i "s/$RealBin\/..\/share\/nonbreaking_prefixes//" tokenizer.perl
-for l in en de; do for f in data/multi30k/*.$l; do if [[ "$f" != *"test"* ]]; then sed -i "$ d" $f; fi;  done; done
-for l in en de; do for f in data/multi30k/*.$l; do perl tokenizer.perl -a -no-escape -l $l -q  < $f > $f.atok; done; done
-python preprocess.py -train_src data/multi30k/train.en.atok -train_tgt data/multi30k/train.de.atok -valid_src data/multi30k/val.en.atok -valid_tgt data/multi30k/val.de.atok -save_data data/multi30k.atok.low -lower
+```
+cat data/dev_06.zh | ./subword-nmt/apply_bpe.py -c data-bpe/bpe.zh > data-bpe/dev_06.zh.bpe 
+
+for i in `seq 0 3`; do cat data/dev_06.en.$i | ./subword-nmt/apply_bpe.py -c data-bpe/bpe.en > data-bpe/dev_06.en.$i.bpe; done 
 ```
 
-### 2) Train the model.
+Apply BPE to test set:
 
-```python train.py -data data/multi30k.atok.low.train.pt -save_model multi30k_model -gpus 0```
+```
+cat data/test_08.zh | ./subword-nmt/apply_bpe.py -c data-bpe/bpe.zh > data-bpe/test_08.zh.bpe 
 
-### 3) Translate sentences.
-
-```bash
-python translate.py -gpu 0 -model multi30k_model_e13_*.pt -src data/multi30k/test.en.atok -tgt data/multi30k/test.de.atok -replace_unk -verbose -output multi30k.test.pred.atok
+for i in `seq 0 3`; do cat data/test_08.en.$i | ./subword-nmt/apply_bpe.py -c data-bpe/bpe.en > data-bpe/test_08.en.$i.bpe; done 
 ```
 
-### 4) Evaluate.
+### 2) Preprocess the data.
 
-```bash
-wget https://raw.githubusercontent.com/moses-smt/mosesdecoder/master/scripts/generic/multi-bleu.perl
-perl multi-bleu.perl data/multi30k/test.de.atok < multi30k.test.pred.atok
+Length limit: 80 (prune all sentences longer than 80 words after BPE).
+
+```
+python preprocess.py -train_src data-bpe/train100k.zh.bpe -train_tgt data-bpe/train100k.en.bpe -valid_src data-bpe/dev_06.zh.bpe -valid_tgt data-bpe/dev_06.en.0.bpe -seq_length 80 -save_data data-bpe/len80
 ```
 
-## Pretrained Models
+### 3) Train the model (with `-brnn` and 30 epochs).
 
-The following pretrained models can be downloaded and used with translate.py.
+```
+nohup python train.py -data data-bpe/len80.train.pt -save_model model.bi -gpus 1 -brnn -epochs 30 &>train-bpe.log.bi
+```
 
-- [onmt_model_en_de_200k](https://s3.amazonaws.com/pytorch/examples/opennmt/models/onmt_model_en_de_200k-4783d9c3.pt): An English-German translation model based on the 200k sentence dataset at [OpenNMT/IntegrationTesting](https://github.com/OpenNMT/IntegrationTesting/tree/master/data). Perplexity: 21.
-- [onmt_model_en_fr_b1M](https://s3.amazonaws.com/pytorch/examples/opennmt/models/onmt_model_en_fr_b1M-261c69a7.pt): An English-French model trained on benchmark-1M. Perplexity: 4.85.
+### 4) Translate sentences in dev and test sets.
 
-## Release Notes
+```
+python translate.py -model models/model.bi_acc_0.00_ppl_19.03_e19.pt -src data-bpe/dev_06.zh.bpe -gpu 1 -output dev_06.out.e19.bpe.bi
 
-The following OpenNMT features are implemented:
+python translate.py -model models/model.bi_acc_0.00_ppl_19.03_e19.pt -src data-bpe/test_08.zh.bpe -gpu 1 -output test_08.out.e19.bpe.bi
+```
 
-- multi-layer bidirectional RNNs with attention and dropout
-- data preprocessing
-- saving and loading from checkpoints
-- inference (translation) with batching and beam search
 
-Not yet implemented:
+### 5) Evaluate BLEU score (unbpe first).
 
-- word features
-- multi-GPU
-- residual connections
+Dev:
+
+```
+cat dev_06.out.e19.bpe.bi | sed -e 's/@@ //g'| perl multi-bleu.perl data/dev_06.en.*
+```
+
+Result:
+
+```
+BLEU= 28.96, 67.1/38.2/21.9/12.6 (BP= 1.000, ratio= 1.000, hyp_len= 22833, ref_len= 22838
+```
+
+Test:
+
+```
+cat test_08.out.e19.bpe.bi| sed -e 's/@@ //g'| perl multi-bleu.perl data/test_08.en.*
+```
+
+Result:
+
+```
+BLEU= 25.17, 63.0/33.4/18.6/10.4 (BP= 0.995, ratio= 0.995, hyp_len= 22567, ref_len= 22678)```
 

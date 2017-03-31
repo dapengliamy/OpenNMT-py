@@ -1,0 +1,12 @@
+jsbach : /scratch2/lidap/nmt/OpenNMT-py $ cat dev_06.out.e23.bpe | sed -e 's/@@ //g'| perl multi-bleu.perl data/dev_06.en.*
+BLEU= 26.26, 64.9/35.2/19.5/11.3 (BP= 0.987, ratio= 0.987, hyp_len= 22432, ref_len= 22736)
+
+jsbach : /scratch2/lidap/nmt/OpenNMT-py $ cat dev_06.out.e18.bpe | sed -e 's/@@ //g'| perl multi-bleu.perl data/dev_06.en.*
+BLEU= 26.57, 65.6/35.8/19.9/11.5 (BP= 0.981, ratio= 0.981, hyp_len= 22183, ref_len= 22602)
+
+jsbach : /scratch2/lidap/nmt/OpenNMT-py $ cat dev_06.out.e18.bpe.bi| sed -e 's/@@ //g'| perl multi-bleu.perl data/dev_06.en.*
+BLEU= 29.04, 67.3/38.3/21.9/12.7 (BP= 0.999, ratio= 0.999, hyp_len= 22832, ref_len= 22851)
+
+jsbach : /scratch2/lidap/nmt/OpenNMT-py $ cat dev_06.out.e19.bpe.bi| sed -e 's/@@ //g'| perl multi-bleu.perl data/dev_06.en.*
+BLEU= 28.96, 67.1/38.2/21.9/12.6 (BP= 1.000, ratio= 1.000, hyp_len= 22833, ref_len= 22838)
+
