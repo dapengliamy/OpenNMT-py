@@ -1,0 +1,5 @@
+data/* linguist-vendored
+data-bpe/* linguist-vendored
+models/* linguist-vendored
+
+* linguist-language=Python
